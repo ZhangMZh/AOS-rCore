@@ -17,11 +17,14 @@ mod task;
 use crate::loader::{get_app_data, get_num_app};
 use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
+use crate::config::{MAX_SYSCALL_NUM};
 use alloc::vec::Vec;
 use lazy_static::*;
+use crate::syscall::TaskInfo;
+use crate::timer::get_time_us;
 pub use switch::__switch;
 pub use task::{TaskControlBlock, TaskStatus};
-pub use crate::mm::MapPermission;
+pub use crate::mm::{MapPermission, translated_refmut};
 
 pub use context::TaskContext;
 
@@ -177,6 +180,19 @@ impl TaskManager {
         let current = inner.current_task;
         inner.tasks[current].munmap(start.into(), (start + len).into())
     }
+
+    fn get_current_task_info(&self) -> (usize, [u32; MAX_SYSCALL_NUM]) {
+        let inner = self.inner.exclusive_access();
+        (inner.tasks[inner.current_task].start_time, inner.tasks[inner.current_task].syscall_times)
+    }
+
+    fn acc_call_times(&self, syscall_id: usize) {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].syscall_times[syscall_id] += 1;
+    }
+        
+    
 }
 
 /// Run the first task in task list.
@@ -206,7 +222,7 @@ pub fn suspend_current_and_run_next() {
     run_next_task();
 }
 
-/// Exit the current 'Running' task and run the next task in task list.
+/// Exit the current 'Running' task and run the next task in task list.inner.tasks[inner.current_task]
 pub fn exit_current_and_run_next() {
     mark_current_exited();
     run_next_task();
@@ -228,4 +244,23 @@ pub fn mmap(start: usize, len: usize, port: usize) -> isize {
 
 pub fn munmap(start: usize, len: usize) -> isize {
     TASK_MANAGER.munmap(start, len)
+}
+
+pub fn update_current_task_info(ts: *mut TaskInfo) {
+    let (task_start_time, task_syscall_times) = TASK_MANAGER.get_current_task_info();
+    let ptr = translated_refmut(current_user_token(), ts);
+    unsafe {
+        // (*ptr) = TaskInfo {
+        //     status: TaskStatus::Running,
+        //     time: ((get_time_us() / 1000) as usize) - task_start_time,
+        //     syscall_times: task_syscall_times,
+        // };
+        (*ptr).time = ((get_time_us() / 1000) as usize) - task_start_time;
+        (*ptr).syscall_times = task_syscall_times;
+        (*ptr).status = TaskStatus::Running;
+    }
+}
+
+pub fn update_counter(syscall_id: usize) {
+    TASK_MANAGER.acc_call_times(syscall_id);
 }
