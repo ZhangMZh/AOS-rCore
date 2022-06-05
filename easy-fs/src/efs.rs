@@ -125,6 +125,7 @@ impl EasyFileSystem {
             block_offset,
             Arc::clone(efs),
             block_device,
+            0,
         )
     }
     /// Get inode by id

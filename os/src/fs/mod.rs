@@ -9,12 +9,14 @@ pub trait File : Send + Sync {
     fn writable(&self) -> bool;
     fn read(&self, buf: UserBuffer) -> usize;
     fn write(&self, buf: UserBuffer) -> usize;
-    fn get_stat(&self) -> Option<Stat>;
+    fn get_stat(&self) -> Option<Stat> {
+        None
+    }
 }
 
 /// The stat of a inode
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Stat {
     /// ID of device containing file
     pub dev: u64,

@@ -7,7 +7,7 @@ use crate::task::current_user_token;
 use crate::task::current_task;
 use crate::fs::open_file;
 use crate::fs::{OpenFlags, create_link, remove_link};
-use crate::fs::Stat;
+use crate::fs::{Stat, StatMode};
 use crate::mm::UserBuffer;
 use alloc::sync::Arc;
 
@@ -87,22 +87,16 @@ pub fn sys_fstat(fd: usize, st: *mut Stat) -> isize {
     if fd >= inner.fd_table.len() {
         return -1;
     }
-    if let Some(file) = &inner.fd_table[fd] {
-        let file = file.clone();
-        // release current task TCB manually to avoid multi-borrow
-        drop(inner);
-        match file.get_stat() {
-            Some(stat) => {
-                *translated_refmut(token, st) = stat;
-                0
-            },
-            None => {-1},
-        }
-    } else {
-        -1
+    if inner.fd_table[fd].is_none() {
+        return -1;
     }
-    
-    
+    match inner.fd_table[fd].as_ref().unwrap().get_stat() {
+        Some(stat) => {
+            *translated_refmut(token, st) = stat;
+            0
+        },
+        None => {-1},
+    }
 }
 
 pub fn sys_linkat(old_name: *const u8, new_name: *const u8) -> isize {

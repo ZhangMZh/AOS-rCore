@@ -19,6 +19,7 @@ pub struct Inode {
     block_offset: usize,
     fs: Arc<Mutex<EasyFileSystem>>,
     block_device: Arc<dyn BlockDevice>,
+    inode_id: u32,
 }
 
 impl Inode {
@@ -28,12 +29,14 @@ impl Inode {
         block_offset: usize,
         fs: Arc<Mutex<EasyFileSystem>>,
         block_device: Arc<dyn BlockDevice>,
+        inode_id: u32,
     ) -> Self {
         Self {
             block_id: block_id as usize,
             block_offset,
             fs,
             block_device,
+            inode_id,
         }
     }
     /// Call a function over a disk inode to read it
@@ -87,6 +90,7 @@ impl Inode {
                     block_offset,
                     self.fs.clone(),
                     self.block_device.clone(),
+                    inode_id,
                 ))
             })
         })
@@ -154,6 +158,7 @@ impl Inode {
             block_offset,
             self.fs.clone(),
             self.block_device.clone(),
+            new_inode_id,
         )))
         // release efs lock automatically by compiler
     }
@@ -257,24 +262,23 @@ impl Inode {
     }
 
     pub fn get_inode_id(&self) -> u32 {
-        let _fs_lock = self.fs.lock();
-        self.read_disk_inode(|disk_inode| {
-            let mut dirent = DirEntry::empty();
-            disk_inode.read_at(self.block_offset, dirent.as_bytes_mut(), &self.block_device);
-            dirent.inode_number()
-        })
+        self.inode_id
     }
 
     pub fn count_links(&self, inode_id: u32) -> u32 {
         let _fs_lock = self.fs.lock();
         self.read_disk_inode(|disk_inode| {
-            let mut cnt = 0;
             let file_count = (disk_inode.size as usize) / DIRENT_SZ;
             let mut dirent = DirEntry::empty();
+            let mut cnt = 0;
             for i in 0..file_count {
-                disk_inode.read_at(DIRENT_SZ * i, dirent.as_bytes_mut(), &self.block_device);
+                disk_inode.read_at(
+                    DIRENT_SZ * i, 
+                    dirent.as_bytes_mut(), 
+                    &self.block_device
+                );
                 if dirent.inode_number() == inode_id {
-                    cnt += 1;
+                    cnt = cnt + 1;
                 }
             }
             cnt
