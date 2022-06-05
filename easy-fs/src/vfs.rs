@@ -208,4 +208,76 @@ impl Inode {
         });
         block_cache_sync_all();
     }
+
+    /// link names
+    pub fn create_link(&self, old_name: &str, new_name: &str) -> isize {
+        if old_name == new_name {
+            return -1;
+        }
+        let mut fs = self.fs.lock();
+        let inode_id = self.read_disk_inode(|disk_inode| {
+            self.find_inode_id(old_name, disk_inode)
+        }).unwrap();
+        self.modify_disk_inode(|root_inode| {
+            let file_count = (root_inode.size as usize) / DIRENT_SZ;
+            let new_size = (file_count + 1) * DIRENT_SZ;
+            self.increase_size(new_size as u32, root_inode, &mut fs);
+            let dirent = DirEntry::new(new_name, inode_id);
+            root_inode.write_at(
+                file_count * DIRENT_SZ,
+                dirent.as_bytes(),
+                &self.block_device,
+            );
+        });
+        0
+    }
+    
+    /// remove linked name
+    pub fn remove_link(&self, name: &str) -> isize {
+        self.modify_disk_inode(|disk_inode: &mut DiskInode| {
+            let file_count = (disk_inode.size as usize) / DIRENT_SZ;
+            let mut dirent = DirEntry::empty();
+            for i in 0..file_count {
+                disk_inode.read_at(
+                    DIRENT_SZ * i, 
+                    dirent.as_bytes_mut(), 
+                    &self.block_device
+                );
+                if dirent.name() == name {
+                    disk_inode.write_at(
+                        DIRENT_SZ * i,
+                        DirEntry::empty().as_bytes_mut(),
+                        &self.block_device,
+                    );
+                    return 0;
+                }
+            }
+            -1
+        })
+    }
+
+    pub fn get_inode_id(&self) -> u32 {
+        let _fs_lock = self.fs.lock();
+        self.read_disk_inode(|disk_inode| {
+            let mut dirent = DirEntry::empty();
+            disk_inode.read_at(self.block_offset, dirent.as_bytes_mut(), &self.block_device);
+            dirent.inode_number()
+        })
+    }
+
+    pub fn count_links(&self, inode_id: u32) -> u32 {
+        let _fs_lock = self.fs.lock();
+        self.read_disk_inode(|disk_inode| {
+            let mut cnt = 0;
+            let file_count = (disk_inode.size as usize) / DIRENT_SZ;
+            let mut dirent = DirEntry::empty();
+            for i in 0..file_count {
+                disk_inode.read_at(DIRENT_SZ * i, dirent.as_bytes_mut(), &self.block_device);
+                if dirent.inode_number() == inode_id {
+                    cnt += 1;
+                }
+            }
+            cnt
+        })
+    }
 }
