@@ -35,6 +35,7 @@ lazy_static! {
 pub struct MemorySet {
     page_table: PageTable,
     areas: Vec<MapArea>,
+    mmap_blocks: BTreeMap<VirtPageNum, FrameTracker>,
 }
 
 impl MemorySet {
@@ -42,6 +43,7 @@ impl MemorySet {
         Self {
             page_table: PageTable::new(),
             areas: Vec::new(),
+            mmap_blocks: Default::default(),
         }
     }
     pub fn token(&self) -> usize {
@@ -58,6 +60,40 @@ impl MemorySet {
             MapArea::new(start_va, end_va, MapType::Framed, permission),
             None,
         );
+    }
+    pub fn mmap(
+        &mut self,
+        start_va: VirtAddr,
+        end_va: VirtAddr,
+        permission: MapPermission,
+    ) -> isize {
+        let range = VPNRange::new(start_va.floor(), end_va.ceil());
+        for vpn in range {
+            use alloc::collections::btree_map::Entry::*;
+            if let Vacant(entry) = self.mmap_blocks.entry(vpn) {
+                let frame = frame_alloc().unwrap();
+                self.page_table.map(
+                    vpn,
+                    frame.ppn,
+                    PTEFlags::from_bits(permission.bits).unwrap(),
+                );
+                entry.insert(frame);
+            } else {
+                return -1;
+            }
+        }
+        0
+    }
+    pub fn munmap(&mut self, start_va: VirtAddr, end_va: VirtAddr) -> isize {
+        let range = VPNRange::new(start_va.floor(), end_va.ceil());
+        for vpn in range {
+            if self.mmap_blocks.remove(&vpn).is_some() {
+                self.page_table.unmap(vpn);
+            } else {
+                return -1;
+            }
+        }
+        0
     }
     fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
         map_area.map(&mut self.page_table);

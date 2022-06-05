@@ -21,6 +21,7 @@ use alloc::vec::Vec;
 use lazy_static::*;
 pub use switch::__switch;
 pub use task::{TaskControlBlock, TaskStatus};
+pub use crate::mm::MapPermission;
 
 pub use context::TaskContext;
 
@@ -147,6 +148,35 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
+
+    fn mmap(&self, start: usize, len: usize, port: usize) -> isize {
+        if start & (4096 - 1) != 0 || port & !0x7 != 0 || port == 0 {
+            return -1;
+        }
+        let mut permission = MapPermission::U;
+        if port & 0b001 != 0 {
+            permission |= MapPermission::R;
+        }
+        if port & 0b010 != 0 {
+            permission |= MapPermission::W;
+        }
+        if port & 0b100 != 0 {
+            permission |= MapPermission::X;
+        }
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].mmap(
+            start.into(),
+            (start + len).into(),
+            permission,
+        )
+    }
+
+    fn munmap(&self, start: usize, len: usize) -> isize {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].munmap(start.into(), (start + len).into())
+    }
 }
 
 /// Run the first task in task list.
@@ -190,4 +220,12 @@ pub fn current_user_token() -> usize {
 /// Get the current 'Running' task's trap contexts.
 pub fn current_trap_cx() -> &'static mut TrapContext {
     TASK_MANAGER.get_current_trap_cx()
+}
+
+pub fn mmap(start: usize, len: usize, port: usize) -> isize {
+    TASK_MANAGER.mmap(start, len, port)
+}
+
+pub fn munmap(start: usize, len: usize) -> isize {
+    TASK_MANAGER.munmap(start, len)
 }

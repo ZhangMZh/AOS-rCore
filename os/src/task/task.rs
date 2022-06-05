@@ -53,6 +53,13 @@ impl TaskControlBlock {
         );
         task_control_block
     }
+    pub fn mmap(&mut self, start: VirtAddr, end: VirtAddr, permission: MapPermission) -> isize {
+        self.memory_set.mmap(start, end, permission)
+    }
+
+    pub fn munmap(&mut self, start: VirtAddr, end: VirtAddr) -> isize {
+        self.memory_set.munmap(start, end)
+    }
 }
 
 #[derive(Copy, Clone, PartialEq)]
