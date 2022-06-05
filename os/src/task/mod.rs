@@ -17,6 +17,8 @@ mod task;
 use crate::config::{MAX_APP_NUM, MAX_SYSCALL_NUM};
 use crate::loader::{get_num_app, init_app_cx};
 use crate::sync::UPSafeCell;
+use crate::syscall::TaskInfo;
+use crate::timer::get_time_us;
 use lazy_static::*;
 pub use switch::__switch;
 pub use task::{TaskControlBlock, TaskStatus};
@@ -54,10 +56,13 @@ lazy_static! {
         let mut tasks = [TaskControlBlock {
             task_cx: TaskContext::zero_init(),
             task_status: TaskStatus::UnInit,
+            syscall_times: [0; MAX_SYSCALL_NUM],
+            start_time: 0,
         }; MAX_APP_NUM];
         for (i, t) in tasks.iter_mut().enumerate().take(num_app) {
             t.task_cx = TaskContext::goto_restore(init_app_cx(i));
             t.task_status = TaskStatus::Ready;
+            t.start_time = (get_time_us() / 1000) as usize;
         }
         TaskManager {
             num_app,
@@ -137,6 +142,16 @@ impl TaskManager {
     }
 
     // LAB1: Try to implement your function to update or get task info!
+    fn get_current_task(&self) -> TaskControlBlock {
+        let inner = self.inner.exclusive_access();
+        inner.tasks[inner.current_task]
+    }
+
+    fn acc_call_times(&self, syscall_id: usize) {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].syscall_times[syscall_id] += 1;
+    }
 }
 
 /// Run the first task in task list.
@@ -174,3 +189,21 @@ pub fn exit_current_and_run_next() {
 
 // LAB1: Public functions implemented here provide interfaces.
 // You may use TASK_MANAGER member functions to handle requests.
+/// update task info
+pub fn update_current_task_info(ts: *mut TaskInfo) {
+    let task = TASK_MANAGER.get_current_task();
+    unsafe {
+        (*ts) = TaskInfo {
+            time: ((get_time_us() / 1000) as usize) - task.start_time,
+            syscall_times: task.syscall_times,
+            status: task.task_status,
+        }
+        // (*ts).time = ((get_time_us() / 1000) as usize) - task.start_time;
+        // (*ts).status = task.task_status;
+        // (*ts).call = task.call;
+    }
+}
+
+pub fn update_counter(syscall_id: usize) {
+    TASK_MANAGER.acc_call_times(syscall_id);
+}
