@@ -202,6 +202,10 @@
 <span id="197">197</span>
 <span id="198">198</span>
 <span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Types related to task management &amp; Functions for completely changing TCB</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::TaskContext</span>;
@@ -250,6 +254,8 @@
     <span class="kw">pub</span> <span class="ident">children</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">TaskControlBlock</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// It is set when active exit or execution error occurs</span>
     <span class="kw">pub</span> <span class="ident">exit_code</span>: <span class="ident">i32</span>,
+    <span class="doccomment">/// task priority</span>
+    <span class="kw">pub</span> <span class="ident">task_prio</span>: <span class="ident">isize</span>,
 }
 
 <span class="doccomment">/// Simple access to its internal fields</span>
@@ -307,6 +313,7 @@
                     <span class="ident">parent</span>: <span class="prelude-val">None</span>,
                     <span class="ident">children</span>: <span class="ident">Vec::new</span>(),
                     <span class="ident">exit_code</span>: <span class="number">0</span>,
+                    <span class="ident">task_prio</span>: <span class="number">2</span>,
                 })
             },
         };
@@ -374,6 +381,7 @@
                     <span class="ident">parent</span>: <span class="prelude-val">Some</span>(<span class="ident">Arc::downgrade</span>(<span class="self">self</span>)),
                     <span class="ident">children</span>: <span class="ident">Vec::new</span>(),
                     <span class="ident">exit_code</span>: <span class="number">0</span>,
+                    <span class="ident">task_prio</span>: <span class="number">2</span>,
                 })
             },
         });
