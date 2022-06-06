@@ -46,6 +46,8 @@ pub struct TaskControlBlockInner {
     pub children: Vec<Arc<TaskControlBlock>>,
     /// It is set when active exit or execution error occurs
     pub exit_code: i32,
+    /// task priority
+    pub task_prio: isize,
 }
 
 /// Simple access to its internal fields
@@ -103,6 +105,7 @@ impl TaskControlBlock {
                     parent: None,
                     children: Vec::new(),
                     exit_code: 0,
+                    task_prio: 2,
                 })
             },
         };
@@ -170,6 +173,7 @@ impl TaskControlBlock {
                     parent: Some(Arc::downgrade(self)),
                     children: Vec::new(),
                     exit_code: 0,
+                    task_prio: 2,
                 })
             },
         });
