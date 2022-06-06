@@ -9,6 +9,7 @@ use crate::trap::{trap_handler, TrapContext};
 use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
 use core::cell::RefMut;
+use core::cmp::Ordering;
 
 /// Task control block structure
 ///
@@ -46,8 +47,9 @@ pub struct TaskControlBlockInner {
     pub children: Vec<Arc<TaskControlBlock>>,
     /// It is set when active exit or execution error occurs
     pub exit_code: i32,
-    /// task priority
+    /// task priority / pass
     pub task_prio: isize,
+    pub stride: usize,
 }
 
 /// Simple access to its internal fields
@@ -68,6 +70,32 @@ impl TaskControlBlockInner {
     }
     pub fn is_zombie(&self) -> bool {
         self.get_status() == TaskStatus::Zombie
+    }
+}
+
+impl Eq for TaskControlBlock {}
+
+impl PartialEq for TaskControlBlock {
+    fn eq(&self, _other: &Self) -> bool {
+        false
+    }
+}
+impl PartialOrd for TaskControlBlock {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(&other))
+    }
+}
+
+impl Ord for TaskControlBlock {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // **** access inner exclusively
+        let inner = self.inner_exclusive_access();
+        let other_inner = other.inner_exclusive_access();
+        if inner.stride == other_inner.stride {
+            other_inner.task_prio.cmp(&inner.task_prio)
+        } else {
+            other_inner.stride.cmp(&inner.stride)
+        }
     }
 }
 
@@ -106,6 +134,7 @@ impl TaskControlBlock {
                     children: Vec::new(),
                     exit_code: 0,
                     task_prio: 2,
+                    stride: 0,
                 })
             },
         };
@@ -174,6 +203,7 @@ impl TaskControlBlock {
                     children: Vec::new(),
                     exit_code: 0,
                     task_prio: 2,
+                    stride: 0,
                 })
             },
         });
