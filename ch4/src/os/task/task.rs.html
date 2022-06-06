@@ -74,11 +74,17 @@
 <span id="69">69</span>
 <span id="70">70</span>
 <span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Types related to task management</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::TaskContext</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config</span>::{<span class="ident">kernel_stack_position</span>, <span class="ident">TRAP_CONTEXT</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config</span>::{<span class="ident">MAX_SYSCALL_NUM</span>, <span class="ident">kernel_stack_position</span>, <span class="ident">TRAP_CONTEXT</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::mm</span>::{<span class="ident">MapPermission</span>, <span class="ident">MemorySet</span>, <span class="ident">PhysPageNum</span>, <span class="ident">VirtAddr</span>, <span class="ident">KERNEL_SPACE</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::trap</span>::{<span class="ident">trap_handler</span>, <span class="ident">TrapContext</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::timer::get_time_us</span>;
 
 <span class="doccomment">/// task control block structure</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TaskControlBlock</span> {
@@ -87,6 +93,8 @@
     <span class="kw">pub</span> <span class="ident">memory_set</span>: <span class="ident">MemorySet</span>,
     <span class="kw">pub</span> <span class="ident">trap_cx_ppn</span>: <span class="ident">PhysPageNum</span>,
     <span class="kw">pub</span> <span class="ident">base_size</span>: <span class="ident">usize</span>,
+    <span class="kw">pub</span> <span class="ident">syscall_times</span>: [<span class="ident">u32</span>; <span class="ident">MAX_SYSCALL_NUM</span>],
+    <span class="kw">pub</span> <span class="ident">start_time</span>: <span class="ident">usize</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">TaskControlBlock</span> {
@@ -117,6 +125,8 @@
             <span class="ident">memory_set</span>,
             <span class="ident">trap_cx_ppn</span>,
             <span class="ident">base_size</span>: <span class="ident">user_sp</span>,
+            <span class="ident">syscall_times</span>: [<span class="number">0</span>; <span class="ident">MAX_SYSCALL_NUM</span>],
+            <span class="ident">start_time</span>: (<span class="ident">get_time_us</span>() <span class="op">/</span> <span class="number">1000</span>) <span class="kw">as</span> <span class="ident">usize</span>,
         };
         <span class="comment">// prepare TrapContext in user space</span>
         <span class="kw">let</span> <span class="ident">trap_cx</span> <span class="op">=</span> <span class="ident">task_control_block</span>.<span class="ident">get_trap_cx</span>();
@@ -138,7 +148,7 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Debug</span>)]</span>
 <span class="doccomment">/// task status: UnInit, Ready, Running, Exited</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TaskStatus</span> {
     <span class="ident">Ready</span>,

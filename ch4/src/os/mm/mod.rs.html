@@ -52,7 +52,7 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">frame_allocator</span>::{<span class="ident">frame_alloc</span>, <span class="ident">FrameTracker</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">memory_set::remap_test</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">memory_set</span>::{<span class="ident">MapPermission</span>, <span class="ident">MemorySet</span>, <span class="ident">KERNEL_SPACE</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">page_table</span>::{<span class="ident">translated_byte_buffer</span>, <span class="ident">PageTableEntry</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">page_table</span>::{<span class="ident">translated_refmut</span>, <span class="ident">translated_byte_buffer</span>, <span class="ident">PageTableEntry</span>};
 <span class="kw">use</span> <span class="ident">page_table</span>::{<span class="ident">PTEFlags</span>, <span class="ident">PageTable</span>};
 
 <span class="doccomment">/// initiate heap allocator, frame allocator and kernel space</span>

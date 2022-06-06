@@ -69,10 +69,12 @@
 <span id="64">64</span>
 <span id="65">65</span>
 <span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Process management syscalls</span>
-
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::mm::translated_refmut</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config::MAX_SYSCALL_NUM</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::task</span>::{<span class="ident">exit_current_and_run_next</span>, <span class="ident">suspend_current_and_run_next</span>, <span class="ident">TaskStatus</span>, <span class="ident">mmap</span>, <span class="ident">munmap</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::task</span>::{<span class="ident">current_user_token</span>, <span class="ident">exit_current_and_run_next</span>, <span class="ident">suspend_current_and_run_next</span>, <span class="ident">TaskStatus</span>, <span class="ident">mmap</span>, <span class="ident">munmap</span>, <span class="ident">update_current_task_info</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::timer::get_time_us</span>;
 
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
@@ -102,14 +104,15 @@
 }
 
 <span class="comment">// YOUR JOB: 引入虚地址后重写 sys_get_time</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sys_get_time</span>(<span class="ident">_ts</span>: <span class="kw-2">*mut</span> <span class="ident">TimeVal</span>, <span class="ident">_tz</span>: <span class="ident">usize</span>) -&gt; <span class="ident">isize</span> {
-    <span class="kw">let</span> <span class="ident">_us</span> <span class="op">=</span> <span class="ident">get_time_us</span>();
-    <span class="comment">// unsafe {</span>
-    <span class="comment">//     *ts = TimeVal {</span>
-    <span class="comment">//         sec: us / 1_000_000,</span>
-    <span class="comment">//         usec: us % 1_000_000,</span>
-    <span class="comment">//     };</span>
-    <span class="comment">// }</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sys_get_time</span>(<span class="ident">ts</span>: <span class="kw-2">*mut</span> <span class="ident">TimeVal</span>, <span class="ident">tz</span>: <span class="ident">usize</span>) -&gt; <span class="ident">isize</span> {
+    <span class="kw">let</span> <span class="ident">us</span> <span class="op">=</span> <span class="ident">get_time_us</span>();
+    <span class="kw">let</span> <span class="ident">ptr</span> <span class="op">=</span> <span class="ident">translated_refmut</span>(<span class="ident">current_user_token</span>(), <span class="ident">ts</span>);
+    <span class="kw">unsafe</span> {
+        <span class="kw-2">*</span><span class="ident">ptr</span> <span class="op">=</span> <span class="ident">TimeVal</span> {
+            <span class="ident">sec</span>: <span class="ident">us</span> <span class="op">/</span> <span class="number">1_000_000</span>,
+            <span class="ident">usec</span>: <span class="ident">us</span> <span class="op">%</span> <span class="number">1_000_000</span>,
+        };
+    }
     <span class="number">0</span>
 }
 
@@ -133,7 +136,8 @@
 
 <span class="comment">// YOUR JOB: 引入虚地址后重写 sys_task_info</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sys_task_info</span>(<span class="ident">ti</span>: <span class="kw-2">*mut</span> <span class="ident">TaskInfo</span>) -&gt; <span class="ident">isize</span> {
-    <span class="op">-</span><span class="number">1</span>
+    <span class="ident">update_current_task_info</span>(<span class="ident">ti</span>);
+    <span class="number">0</span>
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="os" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (03a8cc7df 2022-02-21)" ></div>

@@ -45,6 +45,8 @@
 <span id="40">40</span>
 <span id="41">41</span>
 <span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Implementation of syscalls</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! The single entry point to all system calls, [`syscall()`], is called</span>
@@ -70,11 +72,13 @@
 <span class="kw">mod</span> <span class="ident">process</span>;
 
 <span class="kw">use</span> <span class="ident">fs</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">process</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">process</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::task::update_counter</span>;
 
 <span class="doccomment">/// handle syscall exception with `syscall_id` and other arguments</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">syscall</span>(<span class="ident">syscall_id</span>: <span class="ident">usize</span>, <span class="ident">args</span>: [<span class="ident">usize</span>; <span class="number">3</span>]) -&gt; <span class="ident">isize</span> {
     <span class="comment">// LAB1: You may need to update syscall info here.</span>
+    <span class="ident">update_counter</span>(<span class="ident">syscall_id</span>);
     <span class="kw">match</span> <span class="ident">syscall_id</span> {
         <span class="ident">SYSCALL_WRITE</span> =&gt; <span class="ident">sys_write</span>(<span class="ident">args</span>[<span class="number">0</span>], <span class="ident">args</span>[<span class="number">1</span>] <span class="kw">as</span> <span class="kw-2">*const</span> <span class="ident">u8</span>, <span class="ident">args</span>[<span class="number">2</span>]),
         <span class="ident">SYSCALL_EXIT</span> =&gt; <span class="ident">sys_exit</span>(<span class="ident">args</span>[<span class="number">0</span>] <span class="kw">as</span> <span class="ident">i32</span>),
